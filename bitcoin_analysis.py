@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+# Expects the two CSVs in the same folder as this script (see README)
 senti = pd.read_csv('fear_greed_index.csv')
 trades = pd.read_csv('historical_data.csv')
 
@@ -47,6 +48,7 @@ print(closed[['Closed PnL' , 'is_win']].head(9))
 win_rate = closed.groupby('classification')['is_win'].mean()
 print(win_rate)
 
+closed = closed[closed['Size USD'] > 0].copy()
 closed['pnl_pct'] = closed['Closed PnL'] / closed['Size USD']
 
 print(closed['pnl_pct'].describe())
@@ -83,17 +85,16 @@ result = acnt.groupby('classification').apply(top_acnt)
 print(result)
 
 
-closed['sentiment_score'] = closed['value']
 
 closed['log_size_USD'] = np.log1p(closed['Size USD'])
 
 closed['is_taker'] = closed['Crossed'].astype(int)
 
-closed['fee_pct'] = closed['Fee']/closed['Size USD']
+closed['fee_pct'] = closed['Fee'] / closed['Size USD']
 
-print(closed[['is_win' ,'sentiment_score', 'fee_pct', 'log_size_USD', 'is_taker']].describe())
+print(closed[['is_win', 'value', 'fee_pct', 'log_size_USD', 'is_taker']].describe())
 
-closed = closed.dropna(subset= ['sentiment_score', 'log_size_USD', 'fee_pct'])
+closed = closed.dropna(subset=['value', 'log_size_USD', 'fee_pct'])
 print(closed.shape)
 
 dummies = pd.get_dummies(closed['Direction'], prefix='dir')
@@ -108,7 +109,7 @@ coin_dummies = pd.get_dummies(closed['coin_grouped'], prefix='coin')
 
 
 features = pd.concat([
-    closed[['is_taker', 'fee_pct', 'log_size_USD','sentiment_score']].reset_index(drop = True),
+    closed[['is_taker', 'fee_pct', 'log_size_USD', 'value']].reset_index(drop=True),
     dummies.reset_index(drop = True),
     coin_dummies.reset_index(drop=True)
 
@@ -150,8 +151,8 @@ print('recall', recall_score(y_test,y_pred))
 
 print('f1score' , f1_score(y_test, y_pred))
 print('roc_auc' , roc_auc_score(y_test, y_proba))
-print('confused_matric' , confusion_matrix(y_test,y_pred))
-print('classified_report' , classification_report(y_test, y_pred))
+print('confusion_matrix\n', confusion_matrix(y_test, y_pred))
+print(classification_report(y_test, y_pred))
 
 print('train accuracy', rf.score(X_train, y_train))
       
@@ -163,7 +164,6 @@ print(imp)
 
 
 
-from scipy import stats
 
 greed_wins = closed[closed['classification']=='Extreme Greed']['is_win']
 
